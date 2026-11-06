@@ -3,26 +3,26 @@ network:
   version: 2
   renderer: networkd
   ethernets:
-    {{ german_interface }}:
+    {{ foreign_interface }}:
       dhcp4: false
       addresses:
-{% if german_ip is string %}
-        - {{ german_ip }}/{{ german_subnet_mask }}
+{% if foreign_ip is string %}
+        - {{ foreign_ip }}/{{ foreign_subnet_mask }}
 {% else %}
-{% for ip in german_ip %}
-        - {{ ip }}/{{ german_subnet_mask }}
+{% for ip in foreign_ip %}
+        - {{ ip }}/{{ foreign_subnet_mask }}
 {% endfor %}
 {% endif %}
       routes:
         - to: 0.0.0.0/0
-          via: {{ german_gateway }}
+          via: {{ foreign_gateway }}
           table: 200
       routing-policy:
-{% if german_ip is string %}
-        - from: {{ german_ip }}
+{% if foreign_ip is string %}
+        - from: {{ foreign_ip }}
           table: 200
 {% else %}
-{% for ip in german_ip %}
+{% for ip in foreign_ip %}
         - from: {{ ip }}
           table: 200
 {% endfor %}

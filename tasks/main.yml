@@ -13,10 +13,16 @@
     state: present
     reload: true
 
+- name: Очистка старой конфигурации Netplan (german)
+  ansible.builtin.file:
+    path: /etc/netplan/60-german-uplink.yaml
+    state: absent
+  notify: Apply Netplan
+
 - name: Generate permanent Netplan configuration
   ansible.builtin.template:
-    src: 60-german-uplink.yaml.j2
-    dest: /etc/netplan/60-german-uplink.yaml
+    src: 60-foreign-uplink.yaml.j2
+    dest: /etc/netplan/60-foreign-uplink.yaml
     owner: root
     group: root
     mode: '0600'
@@ -39,17 +45,16 @@
 
 # --- Логика избирательного SNAT ---
 
-- name: Нормализация переменной german_ip в список
+- name: Нормализация переменной foreign_ip в список
   ansible.builtin.set_fact:
-    de_ip_list: "{{ german_ip.split(',') if (german_ip is string) else german_ip }}"
+    foreign_ip_list: "{{ foreign_ip.split(',') if (foreign_ip is string) else foreign_ip }}"
 
-# 1. Удаление старого глобального правила MASQUERADE (если было)
 - name: Удаление старого глобального правила MASQUERADE
   ansible.builtin.iptables:
     table: nat
     chain: POSTROUTING
     source: "{{ vm_private_subnet | default('10.99.0.0/24') }}"
-    out_interface: "{{ german_interface }}"
+    out_interface: "{{ foreign_interface }}"
     jump: MASQUERADE
     state: absent
 
@@ -58,12 +63,12 @@
     table: nat
     chain: POSTROUTING
     src_range: "10.99.0.{{ 11 + (my_idx | int) * (vms_per_ip | default(5) | int) }}-10.99.0.{{ 10 + ((my_idx | int) + 1) * (vms_per_ip | default(5) | int) }}"
-    out_interface: "{{ german_interface }}"
+    out_interface: "{{ foreign_interface }}"
     jump: SNAT
     to_source: "{{ item }}"
     comment: "SNAT Chunk {{ my_idx }}"
     state: present
-  loop: "{{ de_ip_list }}"
+  loop: "{{ foreign_ip_list }}"
   loop_control:
     index_var: my_idx
 
@@ -72,9 +77,9 @@
     table: nat
     chain: POSTROUTING
     source: "{{ vm_private_subnet | default('10.99.0.0/24') }}"
-    out_interface: "{{ german_interface }}"
+    out_interface: "{{ foreign_interface }}"
     jump: SNAT
-    to_source: "{{ de_ip_list[0] }}"
+    to_source: "{{ foreign_ip_list[0] }}"
     comment: "SNAT Fallback for remaining VMs"
     state: present
 
